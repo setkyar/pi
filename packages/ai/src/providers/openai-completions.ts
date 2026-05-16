@@ -838,10 +838,14 @@ export function convertMessages(
 						assistantMsg.content = assistantText;
 					}
 
-					// Use the signature from the first thinking block if available (for llama.cpp server + gpt-oss)
-					const signature = nonEmptyThinkingBlocks[0].thinkingSignature;
-					if (signature && signature.length > 0) {
-						(assistantMsg as any)[signature] = nonEmptyThinkingBlocks.map((block) => block.thinking).join("\n");
+					// Don't use streaming delta field names as message property names.
+					// "reasoning" and "reasoning_text" are valid in deltas but not on messages
+					// (e.g., Kimi sends "reasoning" in deltas but rejects it on messages with 400).
+					// "reasoning_content" is valid in both — only set it via the compat flag.
+					if (compat.requiresReasoningContentOnAssistantMessages) {
+						(assistantMsg as { reasoning_content?: string }).reasoning_content = nonEmptyThinkingBlocks
+							.map((block) => block.thinking)
+							.join("\n");
 					}
 				}
 			} else if (assistantText.length > 0) {
